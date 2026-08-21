@@ -1,0 +1,16 @@
+[workspace]
+members = [
+    "src/file_system",
+    "src/main",
+    "src/config",
+]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+
+[workspace.dependencies]
+file_system = { path = "src/file_system" }
+config = { path = "src/config" }
+main = { path = "src/main" }

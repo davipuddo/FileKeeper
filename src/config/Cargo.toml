@@ -1,0 +1,11 @@
+[package]
+name = "config"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+file_system = { workspace = true }
+directories = "6.0.0"
+serde = { version = "1.0.229", features = ["derive"] }
+tokio = { version = "1.53.1", features = ["fs", "io-util"] }
+toml = "1.1.4"
