@@ -25,22 +25,27 @@ pub async fn copy_dir(src: PathBuf, dest: PathBuf) -> io::Result<()> {
     Ok(())
 }
 
-pub async fn compare_dirs(src: PathBuf, dest: PathBuf) -> io::Result<bool> {
+async fn compare_dirs(src: PathBuf, dest: PathBuf) -> io::Result<bool> {
 
     let mut reader = read_dir(&src).await?;
 
     while let Some(entry) = reader.next_entry().await? {
         let typ = entry.file_type().await?;
         let new_dest = dest.clone().join(entry.file_name());
-        
+
         if !new_dest.try_exists()? {
+            print!("Missing {:?} at ", entry.file_name());
             return Ok(false)
         }
 
         if typ.is_dir() {
-            Box::pin(compare_dirs(entry.path(), new_dest)).await?;
+            if Box::pin(compare_dirs(entry.path(), new_dest)).await? == false {
+                println!("{:?}", entry.file_name());
+                return Ok(false)
+            };
         } else {
             if compare_files(entry.path(), new_dest).await? == false {
+                println!("{:?}", entry.file_name());
                 return Ok(false)
             }
         }
@@ -48,7 +53,7 @@ pub async fn compare_dirs(src: PathBuf, dest: PathBuf) -> io::Result<bool> {
     Ok(true)
 }
 
-pub async fn compare_files(f1: PathBuf, f2: PathBuf) -> io::Result<bool> {
+async fn compare_files(f1: PathBuf, f2: PathBuf) -> io::Result<bool> {
 
     let f1 = File::open(&f1).await?;
     let f2 = File::open(&f2).await?;
@@ -79,5 +84,42 @@ pub async fn compare_files(f1: PathBuf, f2: PathBuf) -> io::Result<bool> {
 
         reader1.consume(min);
         reader2.consume(min);
+    }
+}
+
+pub async fn compare(src: PathBuf, dest: PathBuf) -> io::Result<()> {
+
+    if !src.try_exists()? {
+        println!("File [{}] does not exist", src.to_str().unwrap());
+        return Ok(());
+    }
+
+    if !dest.try_exists()? {
+        println!("File [{}] does not exist", dest.to_str().unwrap());
+        return Ok(());
+    }
+
+    let name = src.file_name().unwrap().to_str().unwrap();
+
+    if (src.is_file() && dest.is_dir())
+    || (src.is_dir() && dest.is_file()) {
+        print!("Mismatched types");
+        Ok(())
+
+    } else if src.is_file() {
+        print!("=> {} -- ", name);
+        match compare_files(src, dest).await? {
+            true => println!("Ok!"),
+            false => println!("Entries do not match")
+        };
+        Ok(())
+
+    } else {        // Is a directory
+        println!("==> {}", name);
+        match compare_dirs(src, dest).await? {
+            true => println!("<== Ok!"),
+            false => println!("<== Entries do not match")
+        }
+        Ok(())
     }
 }

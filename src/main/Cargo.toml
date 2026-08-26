@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-file_system = { workspace = true }
+entry_manager = { workspace = true }
 config = { workspace = true }
 tokio = { version = "1.53.1", features = ["full"] }
 

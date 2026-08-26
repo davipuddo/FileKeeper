@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "src/file_system",
+    "src/entry_manager",
     "src/main",
     "src/config",
 ]
@@ -11,6 +11,6 @@ version = "0.1.0"
 edition = "2024"
 
 [workspace.dependencies]
-file_system = { path = "src/file_system" }
+entry_manager = { path = "src/entry_manager" }
 config = { path = "src/config" }
 main = { path = "src/main" }

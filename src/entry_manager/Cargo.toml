@@ -1,5 +1,5 @@
 [package]
-name = "file_system"
+name = "entry_manager"
 version.workspace = true
 edition.workspace = true
 

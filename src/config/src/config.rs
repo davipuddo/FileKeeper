@@ -9,17 +9,26 @@ use tokio::{
 
 use directories::ProjectDirs;
 
+#[derive(Debug)]
+pub enum ConfigError {
+    NoConfigHome,
+
+    NoBaseRepositoryProvided,
+    InvalidBaseRepository,
+
+    NoEntriesProvided,
+    InvalidEntry(String),
+
+    ParseError,
+    InvalidId(usize),
+    Io(io::Error)
+}
+
 #[derive(Deserialize, Debug, Clone)]
 pub struct Config {
     name: String,
     repository: String,
-    directories: Vec<String>
-}
-
-impl Config {
-    pub fn extract(self) -> (String, String, Vec<String>) {
-        (self.name, self.repository, self.directories)
-    }
+    entries: Vec<String>
 }
 
 #[derive(Deserialize, Debug)]
@@ -27,13 +36,38 @@ struct Groups {
     group: Vec<Config>
 }
 
-#[derive(Debug)]
-pub enum ConfigError {
-    NoConfigHome,
-    ParseError,
-    InvalidId(usize),
-    Io(io::Error)
+impl Config {
+    pub fn extract(self) -> (String, String, Vec<String>) {
+        (self.name, self.repository, self.entries)
+    }
+
+    pub fn check(&self) -> Result<(), ConfigError> {
+
+        if self.repository.is_empty() {
+            return Err(ConfigError::NoBaseRepositoryProvided)
+        }
+
+        let path_check = PathBuf::from(&self.repository).try_exists();
+
+        if path_check.is_err() || path_check.is_ok_and(|x| x == false) {
+            return Err(ConfigError::InvalidBaseRepository)
+        }
+
+        if self.entries.is_empty() {
+            return Err(ConfigError::NoEntriesProvided)
+        }
+
+        for dir in &self.entries {
+            let path_check = PathBuf::from(&dir).try_exists();
+
+            if  path_check.is_err() || path_check.is_ok_and(|x| x == false) {
+                return Err(ConfigError::InvalidEntry(dir.clone()))
+            }
+        }
+        Ok(())
+    }
 }
+
 
 pub fn config_home() -> Result<PathBuf, ConfigError> {
     let dir = ProjectDirs::from("org", "FileKeeper", "FileKeeper");
@@ -63,7 +97,7 @@ pub async fn create_config(mut config_path: PathBuf) -> Result<(), ConfigError> 
 r#"[[group]]
 name = "machine 1"
 repository = "path/to/repository"
-directories = ["{}"]"#,
+entries = ["{}"]"#,
 opt.unwrap()
         );
 
@@ -108,10 +142,9 @@ pub async fn get_config(mut config_path: PathBuf) -> Result<Config, ConfigError>
 
     match file.parse::<usize>() {
         Ok(id) => {
-            if let Some (val) = config.group.get(id) {
-                Ok(val.clone())
-            } else {
-                Err(ConfigError::InvalidId(id))
+            match config.group.get(id) {
+                Some(val) => Ok(val.clone()),
+                None => Err(ConfigError::InvalidId(id))
             }
         },
         Err(_) => Err(ConfigError::ParseError)

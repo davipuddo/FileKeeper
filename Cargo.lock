@@ -25,7 +25,7 @@ name = "config"
 version = "0.1.0"
 dependencies = [
  "directories",
- "file_system",
+ "entry_manager",
  "serde",
  "tokio",
  "toml",
@@ -53,6 +53,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "entry_manager"
+version = "0.1.0"
+dependencies = [
+ "tokio",
+]
+
+[[package]]
 name = "equivalent"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -66,13 +73,6 @@ checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
  "windows-sys",
-]
-
-[[package]]
-name = "file_system"
-version = "0.1.0"
-dependencies = [
- "tokio",
 ]
 
 [[package]]
@@ -131,7 +131,7 @@ name = "main"
 version = "0.1.0"
 dependencies = [
  "config",
- "file_system",
+ "entry_manager",
  "tokio",
 ]
 
