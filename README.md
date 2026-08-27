@@ -4,3 +4,12 @@
  **NO** I won't use NixOS.
 
 ![Mental Image](docs/MentalImage.png)
+
+# TODO
+- [ ] Add verbose and non-verbose options
+    - Verbose shouldn't use the EntryTree structure
+- [ ] Add the option to ignore hidden files
+- [ ] Make a better print format for `check` (with colors)
+- [ ] Simplify nested crate structure
+- [ ] Handle errors properly
+- [ ] Test, Test, Test
