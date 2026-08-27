@@ -59,10 +59,10 @@ async fn main() -> Result<(), ConfigError> {
 
                 let entry = PathBuf::from(&entry);
                 let mut buf = PathBuf::from(&repository);
-
+                
                 buf = buf.join(&entry.file_name().unwrap());
 
-                compare(entry, buf).await.map_err(ConfigError::Io)?;
+                let _ = compare(&entry, &buf).await;
             }
         }
         _ => todo!()
