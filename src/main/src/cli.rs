@@ -17,6 +17,7 @@ pub(super) enum CliMode {
     Help,
     Check,
     Status,
+    Switch(usize),
     Git(GitMode),
     UpdateEntries,  // Machine -> Entries
     UpdateMachine,  // Entries -> Machine
@@ -57,7 +58,20 @@ pub(super) fn parse_args() -> CliMode {
                 "status" => CliMode::Git(GitMode::Status),
                 _ => CliMode::Unknow
             }
-        }
+        },
+        "switch" => {
+            if args.len() < 2 {
+                eprintln!("No id was provided");
+                return CliMode::Help
+            }
+            match args[1].as_str().parse::<usize>() {
+                Ok(id) => CliMode::Switch(id),
+                Err(_) => {
+                    eprintln!("[{}] is not a valid id", args[1].as_str());
+                    CliMode::Help
+                }
+            }
+        },
         _ => CliMode::Unknow
     }
 }

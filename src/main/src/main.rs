@@ -2,8 +2,7 @@ mod cli;
 mod git;
 
 use cli::{ CliMode, parse_args };
-
-use entry_manager::compare;
+use entry_manager::{ compare };
 use config::*;
 
 use std::path::PathBuf;
@@ -65,6 +64,7 @@ async fn main() -> Result<(), ConfigError> {
                 let _ = compare(&entry, &buf).await;
             }
         }
+        CliMode::Switch(id) => update_id(id).await?,
         _ => todo!()
     };
 

@@ -1,11 +1,8 @@
 use std::{
     path::PathBuf,
-    collections::HashMap
-};
-
-use tokio::{
+    collections::HashMap,
     fs::{self, File, read_dir},
-    io::{self, AsyncBufReadExt, BufReader}
+    io::{self, BufReader, BufRead}
 };
 
 #[derive(Debug, Clone)]
@@ -74,38 +71,40 @@ enum EntryStatus {
     Different
 }
 
-pub async fn copy_dir(src: PathBuf, dest: PathBuf) -> io::Result<()> {
+pub fn copy_dir(src: PathBuf, dest: PathBuf) -> io::Result<()> {
 
-    fs::create_dir_all(&dest).await?;
-    let mut reader = read_dir(&src).await?;
+    fs::create_dir_all(&dest)?;
+    let mut reader = read_dir(&src)?;
 
-    while let Some(entry) = reader.next_entry().await? {
-        let typ = entry.file_type().await?;
+    while let Some(entry) = reader.next() {
+        let entry = entry?;
+
+        let typ = entry.file_type()?;
         let new_dest = dest.clone().join(entry.file_name());
 
         if typ.is_dir() {
-            Box::pin(copy_dir(entry.path(), new_dest)).await?;
+            copy_dir(entry.path(), new_dest)?;
         } else {
-            fs::copy(entry.path(), new_dest).await?;
+            fs::copy(entry.path(), new_dest)?;
         }
     }
     Ok(())
 }
 
-async fn compare_dirs(src: &PathBuf, dest: &PathBuf) -> Result<EntryTree, EntryError> {
+fn compare_dirs(src: &PathBuf, dest: &PathBuf) -> Result<EntryTree, EntryError> {
 
     let mut reader = read_dir(&src)
-        .await
         .map_err(EntryError::Io)?;
 
     let mut root = EntryTree::new_dir();
 
-    while let Some(entry) = reader.next_entry().await.map_err(EntryError::Io)? 
-    {
+    while let Some(entry) = reader.next() {
+
+        let entry = entry.map_err(EntryError::Io)?;
+
         let node;
 
         let typ = entry.file_type()
-            .await
             .map_err(EntryError::Io)?;
 
         let new_dest = &dest.join(entry.file_name());
@@ -114,10 +113,10 @@ async fn compare_dirs(src: &PathBuf, dest: &PathBuf) -> Result<EntryTree, EntryE
             node = EntryTree::Missing;
 
         } else if typ.is_dir() {
-            node = Box::pin(compare_dirs(&entry.path(), &new_dest)).await?;
+            node = compare_dirs(&entry.path(), &new_dest)?;
 
         } else {
-            let status = compare_files(&entry.path(), &new_dest).await?;
+            let status = compare_files(&entry.path(), &new_dest)?;
             node = EntryTree::File(status);
         } 
 
@@ -126,13 +125,13 @@ async fn compare_dirs(src: &PathBuf, dest: &PathBuf) -> Result<EntryTree, EntryE
     Ok(root)
 }
 
-async fn compare_files(path1: &PathBuf, path2: &PathBuf) -> Result<EntryStatus, EntryError> {
+fn compare_files(path1: &PathBuf, path2: &PathBuf) -> Result<EntryStatus, EntryError> {
 
-    let f1 = File::open(&path1).await.map_err(EntryError::Io)?;
-    let f2 = File::open(&path2).await.map_err(EntryError::Io)?;
+    let f1 = File::open(&path1).map_err(EntryError::Io)?;
+    let f2 = File::open(&path2).map_err(EntryError::Io)?;
 
-    let len1 = f1.metadata().await.map_err(EntryError::Io)?.len();
-    let len2 = f2.metadata().await.map_err(EntryError::Io)?.len();
+    let len1 = f1.metadata().map_err(EntryError::Io)?.len();
+    let len2 = f2.metadata().map_err(EntryError::Io)?.len();
 
     let diff = EntryStatus::Different;
 
@@ -144,8 +143,8 @@ async fn compare_files(path1: &PathBuf, path2: &PathBuf) -> Result<EntryStatus, 
     let mut reader2 = BufReader::new(f2);
 
     loop {
-        let buf1 = reader1.fill_buf().await.map_err(EntryError::Io)?;
-        let buf2 = reader2.fill_buf().await.map_err(EntryError::Io)?;
+        let buf1 = reader1.fill_buf().map_err(EntryError::Io)?;
+        let buf2 = reader2.fill_buf().map_err(EntryError::Io)?;
 
         if buf1.is_empty() && buf2.is_empty() {
             return Ok(EntryStatus::Ok)
@@ -177,6 +176,10 @@ pub async fn compare(src: &PathBuf, dest: &PathBuf) -> Result<(), EntryError> {
         return Ok(());
     }
 
+    if src == dest {
+        println!("Ok!");
+    }
+
     let name = src.file_name().unwrap().to_str().unwrap();
 
     if (src.is_file() && dest.is_dir())
@@ -186,7 +189,7 @@ pub async fn compare(src: &PathBuf, dest: &PathBuf) -> Result<(), EntryError> {
 
     } else if src.is_file() {
         print!("=> {} -- ", name);
-        match compare_files(src, dest).await? {
+        match compare_files(src, dest)? {
             EntryStatus::Ok => println!("Ok!"),
             EntryStatus::Unknow=> println!("Unknow!"),
             EntryStatus::Different => println!("Entries do not match")
@@ -195,7 +198,7 @@ pub async fn compare(src: &PathBuf, dest: &PathBuf) -> Result<(), EntryError> {
 
     } else {        // Is a directory
         println!("==> {}", name);
-        compare_dirs(src, dest).await?.print(0);
+        compare_dirs(src, dest)?.print(0);
         Ok(())
     }
 }

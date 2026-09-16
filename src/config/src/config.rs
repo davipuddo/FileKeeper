@@ -122,11 +122,11 @@ pub async fn get_config(mut config_path: PathBuf) -> Result<Config, ConfigError>
 
     config_path.push("config.toml");
 
-    let file = fs::read_to_string(&config_path)
+    let config = fs::read_to_string(&config_path)
         .await
         .map_err(ConfigError::Io)?;
 
-    let res: Result<Groups, _> = toml::from_str(&file);
+    let res: Result<Groups, _> = toml::from_str(&config);
 
     if res.is_err() {
         return Err(ConfigError::ParseError)
@@ -136,11 +136,13 @@ pub async fn get_config(mut config_path: PathBuf) -> Result<Config, ConfigError>
     config_path.pop();
     config_path.push("group_id.txt");
 
-    let file = fs::read_to_string(&config_path)
+    let mut id = fs::read_to_string(&config_path)
         .await
         .map_err(ConfigError::Io)?;
 
-    match file.parse::<usize>() {
+    id = id.chars().take_while(|&x| x.is_digit(10)).collect();
+
+    match id.parse::<usize>() {
         Ok(id) => {
             match config.group.get(id) {
                 Some(val) => Ok(val.clone()),
@@ -149,4 +151,22 @@ pub async fn get_config(mut config_path: PathBuf) -> Result<Config, ConfigError>
         },
         Err(_) => Err(ConfigError::ParseError)
     }
+}
+
+pub async fn update_id(id: usize) -> Result<(), ConfigError> {
+
+    let mut path = config_home()?;
+
+    path.push("group_id.txt");
+
+    if !path.try_exists().map_err(ConfigError::Io)? 
+    {
+        panic!("File does not exist");
+    }
+
+    fs::write(path, format!("{id}"))
+        .await
+        .map_err(ConfigError::Io)?;
+
+    Ok(())
 }
