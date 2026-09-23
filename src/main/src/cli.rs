@@ -46,6 +46,10 @@ pub(super) fn parse_args() -> CliMode {
         "check" | "changes" | "-c" => CliMode::Check,
         "status" | "-s" => CliMode::Status,
         "update" | "sync" | "-S" => {
+            if args.len() < 2 {
+                eprintln!("Update requires an additional argument");
+                return CliMode::Help
+            }
             match args[1].as_str() {
                 "machine" | "home" | "." => CliMode::UpdateMachine,
                 "entries" => CliMode::UpdateEntries,

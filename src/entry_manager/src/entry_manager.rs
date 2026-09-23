@@ -60,6 +60,7 @@ impl EntryTree {
 
 pub enum EntryError {
     Io(io::Error),
+    EntryDoesntExist
 
     // TODO!
 }
@@ -71,7 +72,7 @@ enum EntryStatus {
     Different
 }
 
-pub fn copy_dir(src: PathBuf, dest: PathBuf) -> io::Result<()> {
+fn copy_dir(src: &PathBuf, dest: &PathBuf) -> io::Result<()> {
 
     fs::create_dir_all(&dest)?;
     let mut reader = read_dir(&src)?;
@@ -83,12 +84,25 @@ pub fn copy_dir(src: PathBuf, dest: PathBuf) -> io::Result<()> {
         let new_dest = dest.clone().join(entry.file_name());
 
         if typ.is_dir() {
-            copy_dir(entry.path(), new_dest)?;
+            copy_dir(&entry.path(), &new_dest)?;
         } else {
             fs::copy(entry.path(), new_dest)?;
         }
     }
     Ok(())
+}
+
+pub fn update(src: &PathBuf, dest: &PathBuf) -> Result<(), EntryError> {
+    if !src.try_exists().map_err(EntryError::Io)? {
+        Err(EntryError::EntryDoesntExist)
+    } else {
+        if src.is_dir() {
+            copy_dir(src, dest).map_err(EntryError::Io)?;
+        } else {
+            fs::copy(src, dest).map_err(EntryError::Io)?;
+        }
+        Ok(())
+    }
 }
 
 fn compare_dirs(src: &PathBuf, dest: &PathBuf) -> Result<EntryTree, EntryError> {
@@ -164,7 +178,7 @@ fn compare_files(path1: &PathBuf, path2: &PathBuf) -> Result<EntryStatus, EntryE
     }
 }
 
-pub async fn compare(src: &PathBuf, dest: &PathBuf) -> Result<(), EntryError> {
+pub fn compare(src: &PathBuf, dest: &PathBuf) -> Result<(), EntryError> {
 
     if !src.try_exists().map_err(EntryError::Io)? {
         println!("File [{}] does not exist", src.to_str().unwrap());
