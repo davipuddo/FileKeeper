@@ -1,5 +1,17 @@
 use std::env;
 
+use crate::git;
+
+use entry_manager;
+use config::{
+    ConfigError,
+    config_home,
+    create_config,
+    get_config
+};
+
+use std::path::PathBuf;
+
 pub(crate) enum ConfirmDefault {
     Yes,
     No
@@ -21,6 +33,7 @@ pub(super) enum CliMode {
     Status,
     Switch(String),
     Git(GitMode),
+    Edit,
     UpdateEntries,  // Machine -> Entries
     UpdateMachine,  // Entries -> Machine
 }
@@ -32,7 +45,7 @@ pub(super) fn help() {
     println!("{}", str);
 }
 
-pub(super) fn parse_args() -> CliMode {
+fn parse_args() -> CliMode {
     let mut args: Vec<String> = env::args().collect();
     args.remove(0);
 
@@ -76,8 +89,86 @@ pub(super) fn parse_args() -> CliMode {
             }
             CliMode::Switch(args[1].to_string())
         },
+        "edit" | "config" | "-e" => {
+            CliMode::Edit
+        },
         _ => CliMode::Unknow
     }
+}
+
+pub async fn execute(config_path: &PathBuf) -> Result<(), ConfigError> {
+
+    println!("here");
+    let args = parse_args();
+
+    // Parse set of args that do not require a valid config
+    let mut stop = true;
+    match args.clone() {
+        CliMode::Help => help(),
+        CliMode::Unknow => { 
+            eprintln!("Unknow CLI mode");
+            help();
+        },
+        CliMode::Switch(name) => config::switch_group(name)?,
+        _ => stop = false
+    }
+
+    if stop {
+        return Ok(());
+    }
+
+    let config = get_config(config_path.clone())?;
+    config.check()?;
+    let (repository, entries) = config.extract();
+
+    // Parse other parameters
+    match args {
+        CliMode::Status => {
+            println!("Base repository is [{}]", repository);
+            println!("The entries to check are: ");
+            for entry in entries {
+                println!("- [{}]", entry);
+            }
+        },
+        CliMode::Git(mode) => { 
+            git::handle(mode, repository)
+                .await
+                .map_err(ConfigError::Io)?;
+        },
+        CliMode::UpdateMachine => {
+            for entry in entries {
+                let entry = PathBuf::from(&entry);
+                let buf = PathBuf::from(&repository);
+                
+                let local = buf.join(&entry.file_name().unwrap());
+
+                let _ = entry_manager::update(&local, &entry);
+            }
+        }
+        CliMode::UpdateEntries => {
+            for entry in entries {
+                let entry = PathBuf::from(&entry);
+                let buf = PathBuf::from(&repository);
+                
+                let local = buf.join(&entry.file_name().unwrap());
+
+                let _ = entry_manager::update(&entry, &local);
+            }
+        }
+        CliMode::Check => {
+            for entry in entries {
+
+                let entry = PathBuf::from(&entry);
+                let buf = PathBuf::from(&repository);
+                
+                let local = buf.join(&entry.file_name().unwrap());
+
+                let _ = entry_manager::compare(&entry, &local);
+            }
+        }
+        _ => () // Unreachable state
+    };
+    Ok(())
 }
 
 pub(crate) fn confirm(prompt: &str, default: ConfirmDefault) -> bool {
