@@ -102,7 +102,7 @@ async fn main() -> Result<(), ConfigError> {
                 let _ = entry_manager::compare(&entry, &local);
             }
         }
-        _ => todo!()
+        _ => () // Unreachable state
     };
     Ok(())
 }
