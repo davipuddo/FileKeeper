@@ -26,14 +26,14 @@ async fn main() -> Result<(), ConfigError> {
     if !config_path.try_exists().map_err(ConfigError::Io)? {
         println!("No config detected. Creating base config at: [{:?}]", &config_path); 
         create_config(config_path.clone())?;
-        println!("Done"); 
+        println!("Done!\n"); 
         println!("The base config is Non-usable, as it's only a template. \
             Please edit your config file and re-run the program.");
 
         return Ok(())
     }
 
-    cli::execute(&config_path).await;
+    cli::execute(&config_path).await?;
 
     Ok(())
 }

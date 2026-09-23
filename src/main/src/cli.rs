@@ -100,7 +100,7 @@ pub async fn execute(config_path: &PathBuf) -> Result<(), ConfigError> {
 
     let args = parse_args();
 
-    // Parse set of args that do not require a valid config
+    // Execute set of args that do not require a valid config
     let mut stop = true;
     match args.clone() {
         CliMode::Help => help(),
@@ -120,7 +120,7 @@ pub async fn execute(config_path: &PathBuf) -> Result<(), ConfigError> {
     config.check()?;
     let (repository, entries) = config.extract();
 
-    // Parse other parameters
+    // Execute other parameters
     match args {
         CliMode::Status => {
             println!("Base repository is [{}]", repository);
@@ -164,10 +164,40 @@ pub async fn execute(config_path: &PathBuf) -> Result<(), ConfigError> {
 
                 let _ = entry_manager::compare(&entry, &local);
             }
+        },
+        CliMode::Edit => {
+            open_editor(config_path).await;
         }
         _ => () // Unreachable state
     };
     Ok(())
+}
+
+async fn open_editor(config_path: &PathBuf) {
+
+    let config_path = config_path
+        .clone()
+        .into_string()
+        .expect("Could not convert config path to a string");
+
+    let config_file: String = format!("{}/config.toml", config_path)
+        .chars()
+        .filter(|&x| x != '"')
+        .collect();
+
+    let editor = match std::env::var("EDITOR") {
+        Ok(editor) => editor,
+        Err(_) => {
+            eprintln!("EDITOR variable is not set!\nDefaulting to VIM");
+            String::from("vim")
+        }
+    };
+
+    tokio::process::Command::new(&editor)
+    .arg(&config_file)
+    .status()
+    .await
+    .expect(&format!("Could not run {} {}", editor, &config_file));
 }
 
 pub(crate) fn confirm(prompt: &str, default: ConfirmDefault) -> bool {
