@@ -1,10 +1,10 @@
 use serde::Deserialize;
 
-use std::path::PathBuf;
-
-use tokio::{
-    fs::{self},
-    io::{self}
+use std::{
+    path::PathBuf,
+    fs::{write, File, create_dir_all, read_to_string},
+    io,
+    collections::HashMap
 };
 
 use directories::ProjectDirs;
@@ -20,25 +20,24 @@ pub enum ConfigError {
     InvalidEntry(String),
 
     ParseError,
-    InvalidId(usize),
+    InvalidGroupName(String),
     Io(io::Error)
 }
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Config {
-    name: String,
     repository: String,
     entries: Vec<String>
 }
 
 #[derive(Deserialize, Debug)]
 struct Groups {
-    group: Vec<Config>
+    group: HashMap<String, Config>
 }
 
 impl Config {
-    pub fn extract(self) -> (String, String, Vec<String>) {
-        (self.name, self.repository, self.entries)
+    pub fn extract(self) -> (String, Vec<String>) {
+        (self.repository, self.entries)
     }
 
     pub fn check(&self) -> Result<(), ConfigError> {
@@ -78,14 +77,12 @@ pub fn config_home() -> Result<PathBuf, ConfigError> {
     Ok(dir.unwrap().config_dir().to_path_buf())
 }
 
-pub async fn create_config(mut config_path: PathBuf) -> Result<(), ConfigError> {
-    fs::create_dir_all(&config_path)
-        .await
+pub fn create_config(mut config_path: PathBuf) -> Result<(), ConfigError> {
+    create_dir_all(&config_path)
         .map_err(ConfigError::Io)?;
 
     config_path.push("config.toml");
-    fs::File::create(&config_path)
-        .await
+    File::create(&config_path)
         .map_err(ConfigError::Io)?;
 
     let opt = config_path.to_str();
@@ -94,36 +91,32 @@ pub async fn create_config(mut config_path: PathBuf) -> Result<(), ConfigError> 
     }
 
     let default = format!(
-r#"[[group]]
-name = "machine 1"
+r#"[group."machine 1"]
 repository = "path/to/repository"
 entries = ["{}"]"#,
 opt.unwrap()
         );
 
-    fs::write(&config_path, default)
-        .await
+    write(&config_path, default)
         .map_err(ConfigError::Io)?;
 
     config_path.pop();
-    config_path.push("group_id.txt");
-    fs::File::create(&config_path)
-        .await
+    config_path.push("group_name.txt");
+
+    File::create(&config_path)
         .map_err(ConfigError::Io)?;
 
-    fs::write(&config_path, "0")
-        .await
+    write(&config_path, "machine 1")
         .map_err(ConfigError::Io)?;
 
     Ok(())
 }
 
-pub async fn get_config(mut config_path: PathBuf) -> Result<Config, ConfigError> {
+pub fn get_config(mut config_path: PathBuf) -> Result<Config, ConfigError> {
 
     config_path.push("config.toml");
 
-    let config = fs::read_to_string(&config_path)
-        .await
+    let config = read_to_string(&config_path)
         .map_err(ConfigError::Io)?;
 
     let res: Result<Groups, _> = toml::from_str(&config);
@@ -134,39 +127,39 @@ pub async fn get_config(mut config_path: PathBuf) -> Result<Config, ConfigError>
     let config = res.unwrap();
 
     config_path.pop();
-    config_path.push("group_id.txt");
+    config_path.push("group_name.txt");
 
-    let mut id = fs::read_to_string(&config_path)
-        .await
+    let group_name = read_to_string(&config_path)
         .map_err(ConfigError::Io)?;
 
-    id = id.chars().take_while(|&x| x.is_digit(10)).collect();
-
-    match id.parse::<usize>() {
-        Ok(id) => {
-            match config.group.get(id) {
-                Some(val) => Ok(val.clone()),
-                None => Err(ConfigError::InvalidId(id))
-            }
-        },
-        Err(_) => Err(ConfigError::ParseError)
+    match config.group.get(&group_name) {
+        Some(val) => Ok(val.clone()),
+        None => Err(ConfigError::InvalidGroupName(group_name))
     }
 }
 
-pub async fn update_id(id: usize) -> Result<(), ConfigError> {
+pub fn switch_group(name: String) -> Result<(), ConfigError> {
 
     let mut path = config_home()?;
 
-    path.push("group_id.txt");
+    path.push("group_name.txt");
 
     if !path.try_exists().map_err(ConfigError::Io)? 
     {
-        panic!("File does not exist");
+        panic!("File [{:?}] does not exist!", path);
     }
 
-    fs::write(path, format!("{id}"))
-        .await
+    let old_name = read_to_string(&path)
         .map_err(ConfigError::Io)?;
 
+    if name == old_name {
+        println!("Group is already set to [{}]", name)
+
+    } else {
+        write(&path, format!("{name}"))
+            .map_err(ConfigError::Io)?;
+
+        println!("Switched to group [{}]", name);
+    }
     Ok(())
 }

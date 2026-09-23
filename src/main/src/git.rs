@@ -17,15 +17,19 @@ impl Git {
             .output()
             .await?;
 
-        let output = match String::from_utf8(output.stdout) {
+        let out = match String::from_utf8(output.stdout) {
             Ok(str) => str,
             Err(e) => { panic!("{}", e); }
         };
-            
-        let lines: String = output.lines()
-                                .filter(|s| !s.is_empty())
-                                .collect();
-        Ok(lines)
+
+        let err = match String::from_utf8(output.stderr) {
+            Ok(str) => str,
+            Err(e) => { panic!("{}", e); }
+        };
+
+        let res = format!("{}\n{}", out, err);
+
+        Ok(res)
     }
 }
 

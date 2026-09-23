@@ -5,6 +5,7 @@ pub(crate) enum ConfirmDefault {
     No
 }
 
+#[derive(Clone, Debug)]
 pub(super) enum GitMode {
     Push(String),
     Pull,
@@ -12,12 +13,13 @@ pub(super) enum GitMode {
     Status,
 }
 
+#[derive(Clone, Debug)]
 pub(super) enum CliMode {
     Unknow,
     Help,
     Check,
     Status,
-    Switch(usize),
+    Switch(String),
     Git(GitMode),
     UpdateEntries,  // Machine -> Entries
     UpdateMachine,  // Entries -> Machine
@@ -51,6 +53,10 @@ pub(super) fn parse_args() -> CliMode {
             }
         }
         "git" | "-g" => {
+            if args.len() < 2 {
+                eprintln!("No command was provided");
+                return CliMode::Help
+            }
             match args[1].as_str() {
                 "pull" => CliMode::Git(GitMode::Pull),
                 "push" => CliMode::Git(GitMode::Push(args[2].clone())),
@@ -61,16 +67,10 @@ pub(super) fn parse_args() -> CliMode {
         },
         "switch" => {
             if args.len() < 2 {
-                eprintln!("No id was provided");
+                eprintln!("No group name was provided");
                 return CliMode::Help
             }
-            match args[1].as_str().parse::<usize>() {
-                Ok(id) => CliMode::Switch(id),
-                Err(_) => {
-                    eprintln!("[{}] is not a valid id", args[1].as_str());
-                    CliMode::Help
-                }
-            }
+            CliMode::Switch(args[1].to_string())
         },
         _ => CliMode::Unknow
     }
