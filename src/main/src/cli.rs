@@ -98,7 +98,6 @@ fn parse_args() -> CliMode {
 
 pub async fn execute(config_path: &PathBuf) -> Result<(), ConfigError> {
 
-    println!("here");
     let args = parse_args();
 
     // Parse set of args that do not require a valid config
