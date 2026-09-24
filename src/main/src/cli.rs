@@ -35,17 +35,21 @@ fn help() {
     let options = [
         ("help, -h", "show this menu"),
         ("status, -s", "display current selected repositories and entries"),
-        ("check, changes, -c", "check for modifications between the machine and the entries"),
+        ("check, changes, -c", "check for modifications between the local and keep entries"),
         ("update, sync, -S <WHICH>", "update entries"),
-        ("", "\t\t- possible values for updating local entries: [\"machine\", \"home\", \".\"]"),
-        ("", "\t\t- possible values for updating keep entries: [\"entries\"]"),
-        ("switch <NAME>", "switch current group to <NAME"),
-        ("edit", "open the configuration fil"),
-        ("git, -g <COMMAND>", "run git command"),
-        ("", "\t\t- possible commands are: [\"status\", \"pull\", \"push\", \"restore\"]")
+        ("", "  - possible values for updating LOCAL entries are: [\"machine\", \"home\", \".\"]"),
+        ("", "  - possible values for updating KEEP entries are: [\"repo\", \"keep\"]"),
+        ("switch <NAME>", "switch current group to <NAME>"),
+        ("edit", "open the configuration file with the editor defined by $EDITOR"),
+        ("git, -g <COMMAND>", "run a git command at the selected repositories"),
+        ("", "  - possible commands are: [\"status\", \"pull\", \"push\", \"restore\"]")
     ];
+
+    println!("\n{:<10} fkp [OPTIONS]", "Usage: ");
+
+    println!("\nOptions:");
     for (left, right) in options {
-        println!("  {:<25} {}", left, right);
+        println!("  {:<30} {}", left, right);
     }
 }
 
@@ -75,7 +79,7 @@ fn parse_args() -> CliMode {
         }
         "git" | "-g" => {
             if args.len() < 2 {
-                eprintln!("No command was provided");
+                eprintln!("No git command was provided");
                 return CliMode::Help
             }
             match args[1].as_str() {
