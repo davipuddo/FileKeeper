@@ -26,8 +26,8 @@ pub(super) enum CliMode {
     Switch(String),
     Git(GitMode),
     Edit,
-    UpdateKeep,   // Local -> Keep
-    UpdateLocal,  // Keep -> Local 
+    SyncKeep,   // Local -> Keep
+    SyncLocal,  // Keep -> Local 
 }
 
 fn help() {
@@ -35,12 +35,11 @@ fn help() {
     let options = [
         ("help, -h", "show this menu"),
         ("status, -s", "display current selected repositories and entries"),
-        ("check, changes, -c", "check for modifications between the local and keep entries"),
-        ("update, sync, -S <WHICH>", "update entries"),
-        ("", "  - possible values for updating LOCAL entries are: [\"machine\", \"home\", \".\"]"),
-        ("", "  - possible values for updating KEEP entries are: [\"repo\", \"keep\"]"),
+        ("check, -c", "check for modifications between the local and keep entries"),
+        ("sync, -S <WHICH>", "sync entries"),
+        ("", "  - possible arguments are: [\"local\", \"keep\"]"),
         ("switch <NAME>", "switch current group to <NAME>"),
-        ("edit", "open the configuration file with the editor defined by $EDITOR"),
+        ("edit, -e", "open the configuration file with the editor defined by $EDITOR"),
         ("git, -g <COMMAND>", "run a git command at the selected repositories"),
         ("", "  - possible commands are: [\"status\", \"pull\", \"push\", \"restore\"]")
     ];
@@ -64,16 +63,16 @@ fn parse_args() -> CliMode {
 
     match args[0].as_str() {
         "help" | "-h" => CliMode::Help,
-        "check" | "changes" | "-c" => CliMode::Check,
+        "check" | "-c" => CliMode::Check,
         "status" | "-s" => CliMode::Status,
-        "update" | "sync" | "-S" => {
+        "sync" | "-S" => {
             if args.len() < 2 {
-                eprintln!("Update requires an additional argument");
+                eprintln!("Sync requires an additional argument");
                 return CliMode::Help
             }
             match args[1].as_str() {
-                "machine" | "home" | "." => CliMode::UpdateLocal,
-                "repo" | "keep" => CliMode::UpdateKeep,
+                "local" => CliMode::SyncLocal,
+                "keep" => CliMode::SyncKeep,
                 _ => CliMode::Unknow
             }
         }
@@ -90,14 +89,14 @@ fn parse_args() -> CliMode {
                 _ => CliMode::Unknow
             }
         },
-        "switch" => {
+        "switch" | "-w" => {
             if args.len() < 2 {
                 eprintln!("No group name was provided");
                 return CliMode::Help
             }
             CliMode::Switch(args[1].to_string())
         },
-        "edit" | "config" | "-e" => {
+        "edit" | "-e" => {
             CliMode::Edit
         },
         _ => CliMode::Unknow
@@ -158,8 +157,8 @@ pub async fn execute(config_path: &PathBuf) -> Result<(), ConfigError> {
                     .map_err(ConfigError::Io)?;
             }
         },
-        CliMode::UpdateLocal => {
-            let prompt = "Update local files?";
+        CliMode::SyncLocal => {
+            let prompt = "Sync local files?";
             if confirm(prompt, ConfirmDefault::Yes) {
                 for group in groups {
                     let repository = &group.0;
@@ -172,12 +171,12 @@ pub async fn execute(config_path: &PathBuf) -> Result<(), ConfigError> {
 
                         let _ = entry_manager::update(&local, &entry);
                     }
-                    println!("Updated local entries with: {}", repository);
+                    println!("Local entries synced: {}", repository);
                 }
             }
         }
-        CliMode::UpdateKeep => {
-            let prompt = "Update files in the keep?";
+        CliMode::SyncKeep => {
+            let prompt = "Sync keep's files?";
             if confirm(prompt, ConfirmDefault::Yes) {
                 for group in groups {
                     let repository = &group.0;
@@ -190,7 +189,7 @@ pub async fn execute(config_path: &PathBuf) -> Result<(), ConfigError> {
 
                         let _ = entry_manager::update(&entry, &local);
                     }
-                    println!("Updated keep entries at: {}", repository);
+                    println!("Keep's entries synced: {}", repository);
                 }
             }
         }
