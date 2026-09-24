@@ -1,9 +1,17 @@
-use crate::cli::{ GitMode, ConfirmDefault, confirm };
+use crate::cli::{ ConfirmDefault, confirm };
 
 use tokio::{
     process::Command,
     io
 };
+
+#[derive(Clone, Debug)]
+pub(super) enum GitMode {
+    Push(String),
+    Pull,
+    Restore,
+    Status,
+}
 
 struct Git { 
     path: String 
@@ -34,7 +42,7 @@ impl Git {
 }
 
 
-pub(super) async fn handle (mode: GitMode, path: String) -> Result<(), io::Error> {
+pub(super) async fn handle (mode: &GitMode, path: String) -> Result<(), io::Error> {
 
     let git = Git { path };
 

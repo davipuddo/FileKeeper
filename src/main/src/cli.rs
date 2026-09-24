@@ -1,6 +1,6 @@
 use std::env;
 
-use crate::git;
+use crate::git::{self, GitMode};
 
 use entry_manager;
 use config::{
@@ -15,14 +15,6 @@ use std::path::PathBuf;
 pub(crate) enum ConfirmDefault {
     Yes,
     No
-}
-
-#[derive(Clone, Debug)]
-pub(super) enum GitMode {
-    Push(String),
-    Pull,
-    Restore,
-    Status,
 }
 
 #[derive(Clone, Debug)]
@@ -109,6 +101,9 @@ pub async fn execute(config_path: &PathBuf) -> Result<(), ConfigError> {
             help();
         },
         CliMode::Switch(name) => config::switch_group(name)?,
+        CliMode::Edit => {
+            open_editor(config_path).await;
+        }
         _ => stop = false
     }
 
@@ -117,57 +112,78 @@ pub async fn execute(config_path: &PathBuf) -> Result<(), ConfigError> {
     }
 
     let config = get_config(config_path.clone())?;
-    config.check()?;
-    let (repository, entries) = config.extract();
+
+    let mut groups = vec![];
+
+    for config in config {
+        config.check()?;
+        groups.push(config.extract());
+    }
 
     // Execute other parameters
     match args {
         CliMode::Status => {
-            println!("Base repository is [{}]", repository);
+            println!("Base repositories are: ");
+            for group in &groups {
+                println!("- [{:?}]", group.0);
+            }
             println!("The entries to check are: ");
-            for entry in entries {
-                println!("- [{}]", entry);
+            for group in &groups {
+                for entry in &group.1 {
+                    println!("- [{:?}]", entry);
+                }
             }
         },
         CliMode::Git(mode) => { 
-            git::handle(mode, repository)
-                .await
-                .map_err(ConfigError::Io)?;
+            for group in groups {
+                let repository = &group.0;
+                git::handle(&mode, repository.clone())
+                    .await
+                    .map_err(ConfigError::Io)?;
+            }
         },
         CliMode::UpdateMachine => {
-            for entry in entries {
-                let entry = PathBuf::from(&entry);
-                let buf = PathBuf::from(&repository);
-                
-                let local = buf.join(&entry.file_name().unwrap());
+            for group in groups {
+                let repository = &group.0;
+                let entries = &group.1;
+                for entry in entries {
+                    let entry = PathBuf::from(&entry);
+                    let buf = PathBuf::from(&repository);
+                    
+                    let local = buf.join(&entry.file_name().unwrap());
 
-                let _ = entry_manager::update(&local, &entry);
+                    let _ = entry_manager::update(&local, &entry);
+                }
             }
         }
         CliMode::UpdateEntries => {
-            for entry in entries {
-                let entry = PathBuf::from(&entry);
-                let buf = PathBuf::from(&repository);
-                
-                let local = buf.join(&entry.file_name().unwrap());
+            for group in groups {
+                let repository = &group.0;
+                let entries = &group.1;
+                for entry in entries {
+                    let entry = PathBuf::from(&entry);
+                    let buf = PathBuf::from(&repository);
+                    
+                    let local = buf.join(&entry.file_name().unwrap());
 
-                let _ = entry_manager::update(&entry, &local);
+                    let _ = entry_manager::update(&entry, &local);
+                }
             }
         }
         CliMode::Check => {
-            for entry in entries {
+            for group in groups {
+                let repository = &group.0;
+                let entries = &group.1;
+                for entry in entries {
+                    let entry = PathBuf::from(&entry);
+                    let buf = PathBuf::from(&repository);
+                    
+                    let local = buf.join(&entry.file_name().unwrap());
 
-                let entry = PathBuf::from(&entry);
-                let buf = PathBuf::from(&repository);
-                
-                let local = buf.join(&entry.file_name().unwrap());
-
-                let _ = entry_manager::compare(&entry, &local);
+                    let _ = entry_manager::compare(&entry, &local);
+                }
             }
         },
-        CliMode::Edit => {
-            open_editor(config_path).await;
-        }
         _ => () // Unreachable state
     };
     Ok(())

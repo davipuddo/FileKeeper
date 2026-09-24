@@ -181,12 +181,12 @@ fn compare_files(path1: &PathBuf, path2: &PathBuf) -> Result<EntryStatus, EntryE
 pub fn compare(src: &PathBuf, dest: &PathBuf) -> Result<(), EntryError> {
 
     if !src.try_exists().map_err(EntryError::Io)? {
-        println!("File [{}] does not exist", src.to_str().unwrap());
+        println!("File [{}] is missing", src.to_str().unwrap());
         return Ok(());
     }
 
     if !dest.try_exists().map_err(EntryError::Io)? {
-        println!("File [{}] does not exist", dest.to_str().unwrap());
+        println!("File [{}] is missing", dest.to_str().unwrap());
         return Ok(());
     }
 

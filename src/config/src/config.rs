@@ -14,7 +14,7 @@ pub enum ConfigError {
     NoConfigHome,
 
     NoBaseRepositoryProvided,
-    InvalidBaseRepository,
+    InvalidBaseRepository(String),
 
     NoEntriesProvided,
     InvalidEntry(String),
@@ -49,7 +49,7 @@ impl Config {
         let path_check = PathBuf::from(&self.repository).try_exists();
 
         if path_check.is_err() || path_check.is_ok_and(|x| x == false) {
-            return Err(ConfigError::InvalidBaseRepository)
+            return Err(ConfigError::InvalidBaseRepository(self.repository.clone()))
         }
 
         if self.entries.is_empty() {
@@ -91,7 +91,7 @@ pub fn create_config(mut config_path: PathBuf) -> Result<(), ConfigError> {
     }
 
     let default = format!(
-r#"[group."machine 1"]
+r#"[group."general"]
 repository = "path/to/repository"
 entries = ["{}"]"#,
 opt.unwrap()
@@ -106,13 +106,10 @@ opt.unwrap()
     File::create(&config_path)
         .map_err(ConfigError::Io)?;
 
-    write(&config_path, "machine 1")
-        .map_err(ConfigError::Io)?;
-
     Ok(())
 }
 
-pub fn get_config(mut config_path: PathBuf) -> Result<Config, ConfigError> {
+pub fn get_config(mut config_path: PathBuf) -> Result<Vec<Config>, ConfigError> {
 
     config_path.push("config.toml");
 
@@ -124,17 +121,23 @@ pub fn get_config(mut config_path: PathBuf) -> Result<Config, ConfigError> {
     if res.is_err() {
         return Err(ConfigError::ParseError)
     }
-    let config = res.unwrap();
+    let groups = res.unwrap();
 
     config_path.pop();
     config_path.push("group_name.txt");
 
     let group_name = read_to_string(&config_path)
-        .map_err(ConfigError::Io)?;
+        .map_err(ConfigError::Io)?
+        .chars()
+        .take_while(|&c| c != '\n')
+        .collect();
 
-    match config.group.get(&group_name) {
-        Some(val) => Ok(val.clone()),
-        None => Err(ConfigError::InvalidGroupName(group_name))
+    match (groups.group.get(&group_name), groups.group.get("general")) {
+        (Some(group), Some(general)) => {
+            Ok(vec![group.clone(), general.clone()])
+        },
+        (Some(val), None) | (None, Some(val)) => Ok(vec![val.clone()]),
+        (None, None) => Err(ConfigError::InvalidGroupName(group_name)),
     }
 }
 
