@@ -39,9 +39,8 @@ entries = [
 "/home/user/entry_c",
 ]
 ```
-The configuration file can be acessed using:
 
-The group "general" will always be used, if defined, meaning FileKeeper will consider both general's and the defined group's repositories and entries.
+The group "general" will always be used, if defined, meaning FileKeeper will consider both the general and selected group's repositories and entries.
 
 You can change the current group by changing the file `group_name.txt` also at the base config folder, or by running:
 ```fish
