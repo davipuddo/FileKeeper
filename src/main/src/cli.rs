@@ -127,7 +127,7 @@ pub async fn execute(config_path: &PathBuf) -> Result<(), ConfigError> {
             for group in &groups {
                 println!("- [{:?}]", group.0);
             }
-            println!("The entries to check are: ");
+            println!("\nThe entries to check are: ");
             for group in &groups {
                 for entry in &group.1 {
                     println!("- [{:?}]", entry);
@@ -143,30 +143,36 @@ pub async fn execute(config_path: &PathBuf) -> Result<(), ConfigError> {
             }
         },
         CliMode::UpdateMachine => {
-            for group in groups {
-                let repository = &group.0;
-                let entries = &group.1;
-                for entry in entries {
-                    let entry = PathBuf::from(&entry);
-                    let buf = PathBuf::from(&repository);
-                    
-                    let local = buf.join(&entry.file_name().unwrap());
+            let prompt = "Update local files?";
+            if confirm(prompt, ConfirmDefault::Yes) {
+                for group in groups {
+                    let repository = &group.0;
+                    let entries = &group.1;
+                    for entry in entries {
+                        let entry = PathBuf::from(&entry);
+                        let buf = PathBuf::from(&repository);
+                        
+                        let local = buf.join(&entry.file_name().unwrap());
 
-                    let _ = entry_manager::update(&local, &entry);
+                        let _ = entry_manager::update(&local, &entry);
+                    }
                 }
             }
         }
         CliMode::UpdateEntries => {
-            for group in groups {
-                let repository = &group.0;
-                let entries = &group.1;
-                for entry in entries {
-                    let entry = PathBuf::from(&entry);
-                    let buf = PathBuf::from(&repository);
-                    
-                    let local = buf.join(&entry.file_name().unwrap());
+            let prompt = "Update files in the keep?";
+            if confirm(prompt, ConfirmDefault::Yes) {
+                for group in groups {
+                    let repository = &group.0;
+                    let entries = &group.1;
+                    for entry in entries {
+                        let entry = PathBuf::from(&entry);
+                        let buf = PathBuf::from(&repository);
+                        
+                        let local = buf.join(&entry.file_name().unwrap());
 
-                    let _ = entry_manager::update(&entry, &local);
+                        let _ = entry_manager::update(&entry, &local);
+                    }
                 }
             }
         }
@@ -217,7 +223,13 @@ async fn open_editor(config_path: &PathBuf) {
 }
 
 pub(crate) fn confirm(prompt: &str, default: ConfirmDefault) -> bool {
-    println!("{}", prompt);
+
+    let confirm_box = match default {
+        ConfirmDefault::Yes => "[Y/n]",
+        ConfirmDefault::No => "[y/N]"
+    };
+
+    println!("{}\n\n{}", prompt, confirm_box);
 
     let stop = false;
 
@@ -226,6 +238,11 @@ pub(crate) fn confirm(prompt: &str, default: ConfirmDefault) -> bool {
         std::io::stdin()
             .read_line(&mut buffer)
             .unwrap();
+
+        buffer = buffer
+            .chars()
+            .filter(|&c| !c.is_whitespace())
+            .collect();
 
         match buffer.to_lowercase().as_str() {
             "yes" | "y" => return true,
@@ -236,7 +253,7 @@ pub(crate) fn confirm(prompt: &str, default: ConfirmDefault) -> bool {
                     ConfirmDefault::No=> false,
                 }
             }
-            _ => ()
+            _ => println!("aaa")
         }
     }
     false
