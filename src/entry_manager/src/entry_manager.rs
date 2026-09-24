@@ -80,6 +80,10 @@ fn copy_dir(src: &PathBuf, dest: &PathBuf) -> io::Result<()> {
     while let Some(entry) = reader.next() {
         let entry = entry?;
 
+        if entry.file_name() == ".git" {
+            continue;
+        }
+
         let typ = entry.file_type()?;
         let new_dest = dest.clone().join(entry.file_name());
 
