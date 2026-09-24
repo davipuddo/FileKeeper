@@ -30,11 +30,23 @@ pub(super) enum CliMode {
     UpdateMachine,  // Entries -> Machine
 }
 
-pub(super) fn help() {
-    let str = String::from(
-        ""
-    );
-    println!("{}", str);
+fn help() {
+
+    let options = [
+        ("help, -h", "show this menu"),
+        ("status, -s", "display current selected repositories and entries"),
+        ("check, changes, -c", "check for modifications between the machine and the entries"),
+        ("update, sync, -S <WHICH>", "update entries"),
+        ("", "\t\t- possible values for updating local entries: [\"machine\", \"home\", \".\"]"),
+        ("", "\t\t- possible values for updating keep entries: [\"entries\"]"),
+        ("switch <NAME>", "switch current group to <NAME"),
+        ("edit", "open the configuration fil"),
+        ("git, -g <COMMAND>", "run git command"),
+        ("", "\t\t- possible commands are: [\"status\", \"pull\", \"push\", \"restore\"]")
+    ];
+    for (left, right) in options {
+        println!("  {:<25} {}", left, right);
+    }
 }
 
 fn parse_args() -> CliMode {
