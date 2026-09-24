@@ -26,8 +26,8 @@ pub(super) enum CliMode {
     Switch(String),
     Git(GitMode),
     Edit,
-    UpdateEntries,  // Machine -> Entries
-    UpdateMachine,  // Entries -> Machine
+    UpdateKeep,   // Local -> Keep
+    UpdateLocal,  // Keep -> Local 
 }
 
 fn help() {
@@ -72,8 +72,8 @@ fn parse_args() -> CliMode {
                 return CliMode::Help
             }
             match args[1].as_str() {
-                "machine" | "home" | "." => CliMode::UpdateMachine,
-                "entries" => CliMode::UpdateEntries,
+                "machine" | "home" | "." => CliMode::UpdateLocal,
+                "repo" | "keep" => CliMode::UpdateKeep,
                 _ => CliMode::Unknow
             }
         }
@@ -158,7 +158,7 @@ pub async fn execute(config_path: &PathBuf) -> Result<(), ConfigError> {
                     .map_err(ConfigError::Io)?;
             }
         },
-        CliMode::UpdateMachine => {
+        CliMode::UpdateLocal => {
             let prompt = "Update local files?";
             if confirm(prompt, ConfirmDefault::Yes) {
                 for group in groups {
@@ -175,7 +175,7 @@ pub async fn execute(config_path: &PathBuf) -> Result<(), ConfigError> {
                 }
             }
         }
-        CliMode::UpdateEntries => {
+        CliMode::UpdateKeep => {
             let prompt = "Update files in the keep?";
             if confirm(prompt, ConfirmDefault::Yes) {
                 for group in groups {
@@ -206,7 +206,7 @@ pub async fn execute(config_path: &PathBuf) -> Result<(), ConfigError> {
                 }
             }
         },
-        _ => () // Unreachable state
+        _ => panic!("Unreachable state")
     };
     Ok(())
 }
@@ -245,11 +245,11 @@ pub(crate) fn confirm(prompt: &str, default: ConfirmDefault) -> bool {
         ConfirmDefault::No => "[y/N]"
     };
 
-    println!("{}\n\n{}", prompt, confirm_box);
-
     let stop = false;
 
     while !stop {
+
+        println!("{}\n\n{}", prompt, confirm_box);
         let mut buffer = String::new();
         std::io::stdin()
             .read_line(&mut buffer)
@@ -269,7 +269,7 @@ pub(crate) fn confirm(prompt: &str, default: ConfirmDefault) -> bool {
                     ConfirmDefault::No=> false,
                 }
             }
-            _ => println!("aaa")
+            _ => println!("Invalid input")
         }
     }
     false
