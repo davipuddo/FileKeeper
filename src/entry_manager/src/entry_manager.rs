@@ -120,6 +120,10 @@ fn compare_dirs(src: &PathBuf, dest: &PathBuf) -> Result<EntryTree, EntryError> 
 
         let entry = entry.map_err(EntryError::Io)?;
 
+        if entry.file_name() == ".git" {
+            continue;
+        }
+
         let node;
 
         let typ = entry.file_type()
