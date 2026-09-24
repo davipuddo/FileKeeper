@@ -171,7 +171,7 @@ pub async fn execute(config_path: &PathBuf) -> Result<(), ConfigError> {
 
                         let _ = entry_manager::update(&local, &entry);
                     }
-                    println!("Local entries synced: {}", repository);
+                    println!("Local entries synced with: {}", repository);
                 }
             }
         }
@@ -189,7 +189,7 @@ pub async fn execute(config_path: &PathBuf) -> Result<(), ConfigError> {
 
                         let _ = entry_manager::update(&entry, &local);
                     }
-                    println!("Keep's entries synced: {}", repository);
+                    println!("Keep's entries synced at: {}", repository);
                 }
             }
         }
