@@ -42,7 +42,7 @@ entries = [
 
 The group "general" will always be used, if defined, meaning FileKeeper will consider both the general and selected group's repositories and entries.
 
-You can change the current group by changing the file `group_name.txt` also at the base config folder, or by running:
+You can change the current group by editing the file `group_name.txt` at the base config folder, or by running:
 ```fish
 fkp switch [GROUP]
 ```
