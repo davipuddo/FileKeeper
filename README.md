@@ -39,20 +39,20 @@ entries = [
 "/home/user/entry_c",
 ]
 ```
-The configuration file can be acessed using:
 
-The group "general" will always be used, if defined, meaning FileKeeper will consider both general's and the defined group's repositories and entries.
+The group "general" will always be used, if defined, meaning FileKeeper will consider both the general and selected group's repositories and entries.
 
-You can change the current group by changing the file `group_name.txt` also at the base config folder, or by running:
+You can change the current group by editing the file `group_name.txt` at the base config folder, or by running:
 ```fish
 fkp switch [GROUP]
 ```
 
 # TODO
-- [ ] Add verbose and non-verbose options
+- [ ] Add verbose and non-verbose options for `check`
     - Verbose shouldn't use the EntryTree structure
-- [ ] Add the option to ignore hidden files
+- [ ] Add the option to ignore hidden files on `check`
 - [ ] Make a better print format for `check` (with colors)
 - [ ] Simplify nested crate structure
-- [ ] Handle errors properly
+- [ ] Handle errors properly !!!
+- [ ] Increase `check` performance
 - [ ] Test, Test, Test
