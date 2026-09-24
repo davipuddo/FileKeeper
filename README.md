@@ -48,10 +48,11 @@ fkp switch [GROUP]
 ```
 
 # TODO
-- [ ] Add verbose and non-verbose options
+- [ ] Add verbose and non-verbose options for `check`
     - Verbose shouldn't use the EntryTree structure
-- [ ] Add the option to ignore hidden files
+- [ ] Add the option to ignore hidden files on `check`
 - [ ] Make a better print format for `check` (with colors)
 - [ ] Simplify nested crate structure
-- [ ] Handle errors properly
+- [ ] Handle errors properly !!!
+- [ ] Increase `check` performance
 - [ ] Test, Test, Test
