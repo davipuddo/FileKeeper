@@ -12,6 +12,8 @@ use config::{
 
 use std::path::PathBuf;
 
+const DEFAULT_PUSH_MESSAGE: &'static str = "Automatic push from FileKeeper";
+
 pub(crate) enum ConfirmDefault {
     Yes,
     No
@@ -82,8 +84,14 @@ fn parse_args() -> CliMode {
                 return CliMode::Help
             }
             match args[1].as_str() {
+                "push" => { 
+                    let msg = match args.len() {
+                        2 => DEFAULT_PUSH_MESSAGE,
+                        _ => args[2].as_str(),
+                    };
+                    CliMode::Git(GitMode::Push(msg.to_string()))
+                },
                 "pull" => CliMode::Git(GitMode::Pull),
-                "push" => CliMode::Git(GitMode::Push(args[2].clone())),
                 "restore" => CliMode::Git(GitMode::Restore),
                 "status" => CliMode::Git(GitMode::Status),
                 _ => CliMode::Unknow
