@@ -41,7 +41,7 @@ impl Git {
     }
 }
 
-pub(super) fn is_single_repository(groups: &Vec<(String, Vec<String>)>) -> Result<bool> {
+pub(super) fn is_single_repository(groups: &Vec<(String, Vec<String>)>) -> Result<Option<PathBuf>> {
 
     let (keep_1, _) = &groups[0];
     let (keep_2, _) = &groups[1];
@@ -50,7 +50,7 @@ pub(super) fn is_single_repository(groups: &Vec<(String, Vec<String>)>) -> Resul
     let mut path_2 = PathBuf::from(keep_2);
 
     if path_1 == path_2 {
-        return Ok(true);
+        return Ok(Some(path_1));
     }
 
     let mut stop = false;
@@ -71,18 +71,22 @@ pub(super) fn is_single_repository(groups: &Vec<(String, Vec<String>)>) -> Resul
             (false, false) => ()
         }
 
-        if !stop {
-            // Remove git
-            path_1.pop();
-            path_1.pop();
+        // Remove git
+        path_1.pop();
+        path_2.pop();
 
+        if !stop {
             // Go to parents 
-            path_2.pop();
+            path_1.pop();
             path_2.pop();
         }
     }
 
-    Ok(single_repo)
+    if single_repo {
+        Ok(Some(path_1))
+    } else {
+        Ok(None)
+    }
 }
 
 pub(super) fn handle (mode: &GitMode, path: String) -> Result<()> {
@@ -92,7 +96,7 @@ pub(super) fn handle (mode: &GitMode, path: String) -> Result<()> {
     match mode {
         GitMode::Status => {
             let out = git.command(vec!["status"]).unwrap();
-            println!("{}", out);
+            println!("{}",out);
         },
         GitMode::Push(msg) => {
             let out = git.command(vec!["add", "."])?;

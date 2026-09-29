@@ -4,7 +4,7 @@ use std::{
     path::PathBuf
 };
 
-use crate::git::{self, GitMode};
+use crate::git::{self, GitMode, is_single_repository};
 
 use entry_manager;
 
@@ -179,17 +179,19 @@ pub fn execute(config_path: &PathBuf) -> Result<(), ConfigError> {
             let single_repo = git::is_single_repository(&groups)
                 .map_err(ConfigError::Io)?;
 
-            if single_repo {
-                let keep = &groups[0].0;
-                    git::handle(&mode, keep.clone())
+            match single_repo {
+                Some(path) => {
+                    git::handle(&mode, path.into_string().unwrap())
                         .map_err(ConfigError::Io)?;
-            } else {
-                groups.par_iter().try_for_each(|(keep, _)| {
-                    git::handle(&mode, keep.clone())
-                        .map_err(ConfigError::Io)?;
+                },
+                None => {
+                    groups.par_iter().try_for_each(|(keep, _)| {
+                        git::handle(&mode, keep.clone())
+                            .map_err(ConfigError::Io)?;
 
-                    Ok::<(), ConfigError>(())
-                });
+                        Ok::<(), ConfigError>(())
+                    });
+                }
             }
         },
         CliMode::SyncLocal => {
