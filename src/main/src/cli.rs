@@ -3,6 +3,7 @@ use std::env;
 use crate::git::{self, GitMode};
 
 use entry_manager;
+
 use config::{
     ConfigError,
     config_home,
@@ -23,8 +24,9 @@ pub(crate) enum ConfirmDefault {
 pub(super) enum CliMode {
     Unknow,
     Help,
-    Check,
-    Status,
+    CheckDefault,
+    CheckVerbose,
+    Info,
     Switch(String),
     Git(GitMode),
     Edit,
@@ -36,8 +38,9 @@ fn help() {
 
     let options = [
         ("help, -h", "show this menu"),
-        ("status, -s", "display current selected repositories and entries"),
+        ("info, -i", "display current selected repositories and entries"),
         ("check, -c", "check for modifications between the local and keep entries"),
+        ("", "  - for more information use: \"--verbose\" / \"-V\""),
         ("sync, -S <WHICH>", "sync entries"),
         ("", "  - possible arguments are: [\"local\", \"keep\"]"),
         ("switch <NAME>", "switch current group to <NAME>"),
@@ -65,8 +68,16 @@ fn parse_args() -> CliMode {
 
     match args[0].as_str() {
         "help" | "-h" => CliMode::Help,
-        "check" | "-c" => CliMode::Check,
-        "status" | "-s" => CliMode::Status,
+        "check" | "-c" => {
+            if args.len() == 1 {
+                return CliMode::CheckDefault
+            }
+            match args[1].as_str() {
+                "--verbose" | "-V" => CliMode::CheckVerbose,
+                _ => CliMode::Unknow
+            }
+        },
+        "info" | "-i" => CliMode::Info,
         "sync" | "-S" => {
             if args.len() < 2 {
                 eprintln!("Sync requires an additional argument");
@@ -145,7 +156,7 @@ pub async fn execute(config_path: &PathBuf) -> Result<(), ConfigError> {
 
     // Execute other parameters
     match args {
-        CliMode::Status => {
+        CliMode::Info => {
             println!("Base repositories are: ");
             for group in &groups {
                 println!("- [{:?}]", group.0);
@@ -201,7 +212,7 @@ pub async fn execute(config_path: &PathBuf) -> Result<(), ConfigError> {
                 }
             }
         }
-        CliMode::Check => {
+        CliMode::CheckDefault => {
             for group in groups {
                 let repository = &group.0;
                 let entries = &group.1;
@@ -212,6 +223,20 @@ pub async fn execute(config_path: &PathBuf) -> Result<(), ConfigError> {
                     let local = buf.join(&entry.file_name().unwrap());
 
                     let _ = entry_manager::compare(&entry, &local);
+                }
+            }
+        },
+        CliMode::CheckVerbose => {
+            for group in groups {
+                let repository = &group.0;
+                let entries = &group.1;
+                for entry in entries {
+                    let entry = PathBuf::from(&entry);
+                    let buf = PathBuf::from(&repository);
+                    
+                    let local = buf.join(&entry.file_name().unwrap());
+
+                    let _ = entry_manager::compare_verbose(&entry, &local);
                 }
             }
         },
