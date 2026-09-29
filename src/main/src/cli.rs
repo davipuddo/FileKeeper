@@ -98,6 +98,7 @@ fn parse_args() -> CliMode {
                 eprintln!("No git command was provided");
                 return CliMode::Help
             }
+            println!("here");
             match args[1].as_str() {
                 "push" => { 
                     let msg = match args.len() {
