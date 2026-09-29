@@ -12,10 +12,8 @@ use config::{
 };
 
 use std::path::PathBuf;
-use tokio;
 
-#[tokio::main]
-async fn main() -> Result<(), ConfigError> {
+fn main() -> Result<(), ConfigError> {
 
     let config_path = match config_home() {
         Ok(config) => config,
@@ -33,7 +31,7 @@ async fn main() -> Result<(), ConfigError> {
         return Ok(())
     }
 
-    cli::execute(&config_path).await?;
+    cli::execute(&config_path)?;
 
     Ok(())
 }

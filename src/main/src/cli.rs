@@ -1,4 +1,8 @@
-use std::env;
+use std::{
+    env,
+    io::Write,
+    path::PathBuf
+};
 
 use crate::git::{self, GitMode};
 
@@ -11,7 +15,7 @@ use config::{
     get_config
 };
 
-use std::path::PathBuf;
+use rayon::prelude::*;
 
 const DEFAULT_PUSH_MESSAGE: &'static str = "Automatic push from FileKeeper";
 
@@ -122,7 +126,7 @@ fn parse_args() -> CliMode {
     }
 }
 
-pub async fn execute(config_path: &PathBuf) -> Result<(), ConfigError> {
+pub fn execute(config_path: &PathBuf) -> Result<(), ConfigError> {
 
     let args = parse_args();
 
@@ -136,7 +140,7 @@ pub async fn execute(config_path: &PathBuf) -> Result<(), ConfigError> {
         },
         CliMode::Switch(name) => config::switch_group(name)?,
         CliMode::Edit => {
-            open_editor(config_path).await;
+            open_editor(config_path);
         }
         _ => stop = false
     }
@@ -171,11 +175,21 @@ pub async fn execute(config_path: &PathBuf) -> Result<(), ConfigError> {
             }
         },
         CliMode::Git(mode) => { 
-            for group in groups {
-                let keep = &group.0;
-                git::handle(&mode, keep.clone())
-                    .await
-                    .map_err(ConfigError::Io)?;
+
+            let single_repo = git::is_single_repository(&groups)
+                .map_err(ConfigError::Io)?;
+
+            if single_repo {
+                let keep = &groups[0].0;
+                    git::handle(&mode, keep.clone())
+                        .map_err(ConfigError::Io)?;
+            } else {
+                groups.par_iter().try_for_each(|(keep, _)| {
+                    git::handle(&mode, keep.clone())
+                        .map_err(ConfigError::Io)?;
+
+                    Ok::<(), ConfigError>(())
+                });
             }
         },
         CliMode::SyncLocal => {
@@ -247,7 +261,7 @@ pub async fn execute(config_path: &PathBuf) -> Result<(), ConfigError> {
     Ok(())
 }
 
-async fn open_editor(config_path: &PathBuf) {
+fn open_editor(config_path: &PathBuf) {
 
     let config_path = config_path
         .clone()
@@ -267,10 +281,9 @@ async fn open_editor(config_path: &PathBuf) {
         }
     };
 
-    tokio::process::Command::new(&editor)
+    std::process::Command::new(&editor)
     .arg(&config_file)
     .status()
-    .await
     .expect(&format!("Could not run {} {}", editor, &config_file));
 }
 
@@ -285,11 +298,15 @@ pub(crate) fn confirm(prompt: &str, default: ConfirmDefault) -> bool {
 
     while !stop {
 
-        println!("{}\n\n{}", prompt, confirm_box);
+        print!("{} {} ", prompt, confirm_box);
+        std::io::stdout().flush();
+
         let mut buffer = String::new();
         std::io::stdin()
             .read_line(&mut buffer)
             .unwrap();
+        
+        println!("");
 
         buffer = buffer
             .chars()

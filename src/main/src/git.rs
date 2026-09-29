@@ -1,8 +1,9 @@
 use crate::cli::{ ConfirmDefault, confirm };
 
-use tokio::{
+use std::{
     process::Command,
-    io
+    io::Result,
+    path::PathBuf
 };
 
 #[derive(Clone, Debug)]
@@ -18,12 +19,11 @@ struct Git {
 }
 
 impl Git {
-    async fn command(&self, args: Vec<&str>) -> Result<String, io::Error> {
+    fn command(&self, args: Vec<&str>) -> Result<String> {
         let output = Command::new("git")
             .current_dir(&self.path)
             .args(args)
-            .output()
-            .await?;
+            .output()?;
 
         let out = match String::from_utf8(output.stdout) {
             Ok(str) => str,
@@ -41,24 +41,71 @@ impl Git {
     }
 }
 
+pub(super) fn is_single_repository(groups: &Vec<(String, Vec<String>)>) -> Result<bool> {
 
-pub(super) async fn handle (mode: &GitMode, path: String) -> Result<(), io::Error> {
+    let (keep_1, _) = &groups[0];
+    let (keep_2, _) = &groups[1];
+
+    let mut path_1 = PathBuf::from(keep_1);
+    let mut path_2 = PathBuf::from(keep_2);
+
+    if path_1 == path_2 {
+        return Ok(true);
+    }
+
+    let mut stop = false;
+    let mut single_repo = false;
+
+    while !stop {
+        path_1.push(".git");
+        path_2.push(".git");
+
+        match (path_1.try_exists()?, path_2.try_exists()?) {
+            (false, true) | (true, false) => { stop = true; },
+            (true, true) => {
+                if path_1 == path_2 {
+                    stop = true;
+                    single_repo = true;
+                }
+            }
+            (false, false) => ()
+        }
+
+        if !stop {
+            // Remove git
+            path_1.pop();
+            path_1.pop();
+
+            // Go to parents 
+            path_2.pop();
+            path_2.pop();
+        }
+    }
+
+    Ok(single_repo)
+}
+
+pub(super) fn handle (mode: &GitMode, path: String) -> Result<()> {
 
     let git = Git { path };
 
     match mode {
         GitMode::Status => {
-            let out = git.command(vec!["status"]).await?;
+            let out = git.command(vec!["status"]).unwrap();
             println!("{}", out);
         },
         GitMode::Push(msg) => {
-            git.command(vec!["add", "."]).await?;
-            git.command(vec!["commit", "-m", &msg]).await?;
-            let out = git.command(vec!["push"]).await?;
+            let out = git.command(vec!["add", "."])?;
+            println!("{}", out);
+
+            let out = git.command(vec!["commit", "-m", &msg])?;
+            println!("{}", out);
+
+            let out = git.command(vec!["push"])?;
             println!("{}", out);
         },
         GitMode::Pull => {
-            let out = git.command(vec!["pull"]).await?;
+            let out = git.command(vec!["pull"])?;
             println!("{}", out);
         },
         GitMode::Restore => {
@@ -68,11 +115,12 @@ pub(super) async fn handle (mode: &GitMode, path: String) -> Result<(), io::Erro
             match confirm(&prompt, ConfirmDefault::No) {
                 false => println!("Aborting restore!"),
                 true => {
-                    let out = git.command(vec!["restore", "."]).await?;
+                    let out = git.command(vec!["restore", "."])?;
                     println!("{}", out);
                 }
             }
         }
     };
+
     Ok(())
 }
