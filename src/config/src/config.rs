@@ -13,8 +13,8 @@ use directories::ProjectDirs;
 pub enum ConfigError {
     NoConfigHome,
 
-    NoBaseRepositoryProvided,
-    InvalidBaseRepository(String),
+    NoBaseKeepProvided,
+    InvalidBaseKeep(String),
 
     NoEntriesProvided,
     InvalidEntry(String),
@@ -26,7 +26,7 @@ pub enum ConfigError {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Config {
-    repository: String,
+    keep: String,
     entries: Vec<String>
 }
 
@@ -37,19 +37,19 @@ struct Groups {
 
 impl Config {
     pub fn extract(self) -> (String, Vec<String>) {
-        (self.repository, self.entries)
+        (self.keep, self.entries)
     }
 
     pub fn check(&self) -> Result<(), ConfigError> {
 
-        if self.repository.is_empty() {
-            return Err(ConfigError::NoBaseRepositoryProvided)
+        if self.keep.is_empty() {
+            return Err(ConfigError::NoBaseKeepProvided)
         }
 
-        let path_check = PathBuf::from(&self.repository).try_exists();
+        let path_check = PathBuf::from(&self.keep).try_exists();
 
         if path_check.is_err() || path_check.is_ok_and(|x| x == false) {
-            return Err(ConfigError::InvalidBaseRepository(self.repository.clone()))
+            return Err(ConfigError::InvalidBaseKeep(self.keep.clone()))
         }
 
         if self.entries.is_empty() {
@@ -92,7 +92,7 @@ pub fn create_config(mut config_path: PathBuf) -> Result<(), ConfigError> {
 
     let default = format!(
 r#"[group."general"]
-repository = "path/to/repository"
+keep = "path/to/keep"
 entries = ["{}"]"#,
 opt.unwrap()
         );
@@ -109,7 +109,7 @@ opt.unwrap()
     Ok(())
 }
 
-pub fn get_config(mut config_path: PathBuf) -> Result<Vec<Config>, ConfigError> {
+pub fn get_config(mut config_path: PathBuf) -> Result<(Vec<Config>, String), ConfigError> {
 
     config_path.push("config.toml");
 
@@ -132,13 +132,15 @@ pub fn get_config(mut config_path: PathBuf) -> Result<Vec<Config>, ConfigError> 
         .take_while(|&c| c != '\n')
         .collect();
 
-    match (groups.group.get(&group_name), groups.group.get("general")) {
+    let groups = match (groups.group.get(&group_name), groups.group.get("general")) {
         (Some(group), Some(general)) => {
-            Ok(vec![group.clone(), general.clone()])
+            vec![group.clone(), general.clone()]
         },
-        (Some(val), None) | (None, Some(val)) => Ok(vec![val.clone()]),
-        (None, None) => Err(ConfigError::InvalidGroupName(group_name)),
-    }
+        (Some(val), None) | (None, Some(val)) => vec![val.clone()],
+        (None, None) => return Err(ConfigError::InvalidGroupName(group_name)),
+    };
+
+    return Ok((groups, group_name));
 }
 
 pub fn switch_group(name: String) -> Result<(), ConfigError> {

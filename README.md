@@ -16,7 +16,7 @@ fkp edit
 An example of a valid config is:
 ```toml
 [group."general"]
-repository = "/home/user/keep1"
+keep = "/home/user/keep1"
 entries = [
 "/home/user/entry_x/",
 "/home/user/entry_y/",
@@ -24,7 +24,7 @@ entries = [
 ]
 
 [group."machine 1"]
-repository = "/home/user/keep2"
+keep = "/home/user/keep2"
 entries = [
 "/home/user/entry_1.lua",
 "/home/user/entry_2/",
@@ -32,7 +32,7 @@ entries = [
 ]
 
 [group."machine 2"]
-repository = "/home/user/keep3"
+keep = "/home/user/keep3"
 entries = [
 "/home/user/entry_a.sh",
 "/home/user/entry_b/",
@@ -40,7 +40,7 @@ entries = [
 ]
 ```
 
-The group "general" will always be used, if defined, meaning FileKeeper will consider both the general and selected group's repositories and entries.
+The group "general" will always be used, if defined, meaning FileKeeper will consider both the general and selected group's keeps and entries.
 
 You can change the current group by editing the file `group_name.txt` at the base config folder, or by running:
 ```fish

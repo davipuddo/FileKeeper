@@ -145,11 +145,11 @@ pub async fn execute(config_path: &PathBuf) -> Result<(), ConfigError> {
         return Ok(());
     }
 
-    let config = get_config(config_path.clone())?;
+    let (config_groups, group_name) = get_config(config_path.clone())?;
 
     let mut groups = vec![];
 
-    for config in config {
+    for config in config_groups {
         config.check()?;
         groups.push(config.extract());
     }
@@ -157,7 +157,9 @@ pub async fn execute(config_path: &PathBuf) -> Result<(), ConfigError> {
     // Execute other parameters
     match args {
         CliMode::Info => {
-            println!("Base repositories are: ");
+            println!("Current group is: [{}]\n", group_name);
+
+            println!("Refering to keeps: ");
             for group in &groups {
                 println!("- [{:?}]", group.0);
             }
@@ -170,8 +172,8 @@ pub async fn execute(config_path: &PathBuf) -> Result<(), ConfigError> {
         },
         CliMode::Git(mode) => { 
             for group in groups {
-                let repository = &group.0;
-                git::handle(&mode, repository.clone())
+                let keep = &group.0;
+                git::handle(&mode, keep.clone())
                     .await
                     .map_err(ConfigError::Io)?;
             }
